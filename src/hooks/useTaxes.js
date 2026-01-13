@@ -8,6 +8,18 @@ export const useTaxes = () => {
   });
 };
 
+// export const useUpdateTax = () => {
+//   const queryClient = useQueryClient();
+
+//   return useMutation({
+//     mutationFn: ({ id, data }) => taxApi.update(id, data),
+//     onSuccess: () => {
+//       // Force immediate refetch instead of just invalidating
+//       queryClient.refetchQueries({ queryKey: ['taxes'] });
+//     },
+//   });
+// };
+
 export const useUpdateTax = () => {
   const queryClient = useQueryClient();
 

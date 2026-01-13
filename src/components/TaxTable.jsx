@@ -1,17 +1,48 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
+  getPaginationRowModel,
   flexRender,
   createColumnHelper,
-} from '@tanstack/react-table';
-import GenderBadge from './GenderBadge';
-import ColumnFilter from './ColumnFilter';
-import Spinner from './Spinner';
+} from "@tanstack/react-table";
+import GenderBadge from "./GenderBadge";
+import ColumnFilter from "./ColumnFilter";
+import Spinner from "./Spinner";
+import { Pencil, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 
 const columnHelper = createColumnHelper();
+
+const SortableHeader = ({ column, title }) => {
+  const sortState = column.getIsSorted();
+
+  return (
+    <button
+      type="button"
+      onClick={column.getToggleSortingHandler()}
+      className="flex items-center gap-1 text-gray-600 hover:text-gray-900"
+    >
+      <span>{title}</span>
+
+      {sortState === "asc" && <ChevronUp className="h-4 w-4" />}
+
+      {sortState === "desc" && <ChevronDown className="h-4 w-4" />}
+
+      {!sortState && <ChevronsUpDown className="h-4 w-4 text-gray-400" />}
+    </button>
+  );
+};
+
+// const TextFilter = ({ column, placeholder }) => (
+//   <input
+//     value={column.getFilterValue() ?? ""}
+//     onChange={(e) => column.setFilterValue(e.target.value)}
+//     placeholder={placeholder}
+//     className="mt-1 w-full border rounded px-2 py-1 text-xs"
+//   />
+// );
 
 const multiSelectFilter = (row, columnId, filterValue) => {
   if (!filterValue || filterValue.length === 0) return true;
@@ -19,87 +50,131 @@ const multiSelectFilter = (row, columnId, filterValue) => {
   return filterValue.includes(value);
 };
 
+
+const globalFilterFn = (row, columnId, filterValue) => {
+  const value = row.getValue(columnId);
+  if (!value) return false;
+
+  return String(value)
+    .toLowerCase()
+    .includes(String(filterValue).toLowerCase());
+};
+
+
 const TaxTable = ({ data, isLoading, onEdit }) => {
   const [sorting, setSorting] = useState([]);
   const [columnFilters, setColumnFilters] = useState([]);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 5,
+  });
+  const [globalFilter, setGlobalFilter] = useState("");
 
-  const countryOptions = useMemo(() => {
-    return [...new Set(data.map((item) => item.country))].filter(Boolean);
-  }, [data]);
+  const countryOptions = useMemo(
+    () => [...new Set(data.map((item) => item.country))].filter(Boolean),
+    [data]
+  );
+
 
   const columns = useMemo(
     () => [
-      // Using 'name' field - this is what gets updated in the modal
-      columnHelper.accessor('name', {
-        header: () => <span className="text-gray-600">Entity</span>,
-        cell: (info) => (
-          <span className="text-primary-600 font-medium hover:text-primary-700 cursor-pointer">
-            {info.getValue() || '-'}
-          </span>
-        ),
-      }),
-      columnHelper.accessor('gender', {
-        header: () => <span className="text-gray-600">Gender</span>,
-        cell: (info) => <GenderBadge gender={info.getValue()} />,
-      }),
-      columnHelper.accessor('requestDate', {
-        header: () => <span className="text-gray-600">Request date</span>,
-        cell: (info) => {
-          const value = info.getValue();
-          if (!value) return <span className="text-gray-400">-</span>;
-          
-          const date = new Date(value);
-          return (
-            <span className="text-gray-600">
-              {date.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </span>
-          );
-        },
-      }),
-      columnHelper.accessor('country', {
+      columnHelper.accessor("name", {
         header: ({ column }) => (
-          <div className="flex items-center gap-2">
-            <span className="text-gray-600">Country</span>
-            <ColumnFilter
-              options={countryOptions}
-              selectedOptions={(column.getFilterValue()) || []}
-              onChange={(value) => column.setFilterValue(value.length ? value : undefined)}
-            />
+          <div>
+            <SortableHeader column={column} title="Entity" />
+            {/* <TextFilter column={column} placeholder="Search entity..." /> */}
           </div>
         ),
         cell: (info) => (
-          <span className="text-gray-700">{info.getValue() || '-'}</span>
+          <span className="text-primary-600 font-medium cursor-pointer">
+            {info.getValue() || "-"}
+          </span>
         ),
+      }),
+
+      columnHelper.accessor("gender", {
+        header: ({ column }) => (
+          <SortableHeader column={column} title="Gender" />
+        ),
+        cell: (info) => <GenderBadge gender={info.getValue()} />,
+      }),
+      columnHelper.accessor(
+        (row) => {
+          if (!row.requestDate) return Number.POSITIVE_INFINITY; // ⬅️ KEY
+          return new Date(row.requestDate).getTime();
+        },
+        {
+          id: "requestDate",
+
+          header: ({ column }) => (
+            <SortableHeader column={column} title="Request Date" />
+          ),
+
+          sortingFn: "basic",
+
+          cell: ({ row }) => {
+            const value = row.original.requestDate;
+            if (!value) return <span className="text-gray-400">-</span>;
+
+            return new Date(value).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            });
+          },
+        }
+      ),
+
+
+
+//       columnHelper.accessor("requestDate", {
+//   header: ({ column }) => (
+//     <SortableHeader column={column} title="Request Date" />
+//   ),
+//   cell: ({ getValue }) => {
+//     const value = getValue();
+//     if (!value) return "-";
+//     return new Date(value).toLocaleDateString("en-US", {
+//       month: "short",
+//       day: "numeric",
+//       year: "numeric",
+//     });
+//   },
+//   sortingFn: (rowA, rowB, columnId) => {
+//     const a = new Date(rowA.getValue(columnId) || 0);
+//     const b = new Date(rowB.getValue(columnId) || 0);
+//     return a - b;
+//   },
+// }),
+      columnHelper.accessor("country", {
+        header: ({ column }) => (
+          <div className="flex items-center  gap-2">
+            <SortableHeader column={column} title="Country" />
+
+            <ColumnFilter
+              options={countryOptions}
+              selectedOptions={column.getFilterValue() || []}
+              onChange={(value) =>
+                column.setFilterValue(value.length ? value : undefined)
+              }
+            />
+          </div>
+        ),
+
         filterFn: multiSelectFilter,
       }),
+
       columnHelper.display({
-        id: 'actions',
-        header: '',
+        id: "actions",
+        header: () => (
+    <span className="text-gray-600 font-medium">Actions</span>
+  ),
         cell: ({ row }) => (
           <button
             onClick={() => onEdit(row.original)}
-            className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200"
-            title="Edit"
-            type="button"
+            className="p-2 text-gray-400 hover:text-blue-600"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-              />
-            </svg>
+            <Pencil className="h-4 w-4" />
           </button>
         ),
       }),
@@ -110,111 +185,151 @@ const TaxTable = ({ data, isLoading, onEdit }) => {
   const table = useReactTable({
     data,
     columns,
-    state: {
-      sorting,
-      columnFilters,
-    },
+    state: { sorting, columnFilters, pagination, globalFilter },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
+    onPaginationChange: setPagination,
+    onGlobalFilterChange: setGlobalFilter,
+ globalFilterFn,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
   });
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 bg-white rounded-xl shadow-sm">
-        <Spinner size="lg" />
-        <p className="mt-4 text-gray-500">Loading data...</p>
+      <div className="flex justify-center h-64">
+        <Spinner />
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-200">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="border-b border-gray-200">
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50/80"
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {table.getRowModel().rows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={columns.length}
-                  className="px-6 py-16 text-center"
-                >
-                  <div className="flex flex-col items-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-12 w-12 text-gray-300"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                      />
-                    </svg>
-                    <p className="mt-4 text-gray-500 font-medium">No data available</p>
-                    <p className="mt-1 text-gray-400 text-sm">Try adjusting your filters</p>
-                  </div>
+    <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
+<div className="px-6 py-4 border-b bg-gray-50">
+  <input
+    type="text"
+    value={globalFilter ?? ""}
+    onChange={(e) => setGlobalFilter(e.target.value)}
+    placeholder="Search all columns..."
+    className="
+      w-full
+      px-4 py-2
+      border
+      rounded-lg
+      focus:outline-none
+      focus:ring-2
+      focus:ring-indigo-500
+    "
+  />
+</div>
+
+
+      <table className="w-full min-w-[700px]">
+        <thead>
+          {table.getHeaderGroups().map((group) => (
+            <tr key={group.id}>
+              {group.headers.map((header) => (
+                <th key={header.id} className="px-6 py-4 bg-gray-200 border-r border-gray-200 last:border-r-0">
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )}
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+
+        <tbody>
+          {table.getRowModel().rows.map((row) => (
+            <tr key={row.id} className="border-t">
+              {console.log(row.getValue("requestDate"))}
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id} className="px-6 py-4  border-r border-gray-200 last:border-r-0">
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
                 </td>
-              </tr>
-            ) : (
-              table.getRowModel().rows.map((row, index) => (
-                <tr
-                  key={row.id}
-                  className={`hover:bg-gray-50/50 transition-colors duration-150 ${
-                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
-                  }`}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-6 py-4 whitespace-nowrap">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-      
-      {/* Table Footer */}
-      <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-        <p className="text-sm text-gray-500">
-          Showing <span className="font-medium">{table.getRowModel().rows.length}</span> of{' '}
-          <span className="font-medium">{data.length}</span> results
-        </p>
-        {columnFilters.length > 0 && (
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+
+      <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4 border-t">
+        <div className="flex items-center gap-1">
           <button
-            onClick={() => setColumnFilters([])}
-            className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-            type="button"
+            onClick={() => table.setPageIndex(0)}
+            disabled={!table.getCanPreviousPage()}
+            className="px-2 py-1 border rounded disabled:opacity-50"
           >
-            Clear all filters
+            {"<<"}
           </button>
-        )}
+
+          <button
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+            className="px-2 py-1 border rounded disabled:opacity-50"
+          >
+            {"<"}
+          </button>
+
+          <button
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+            className="px-2 py-1 border rounded disabled:opacity-50"
+          >
+            {">"}
+          </button>
+
+          <button
+            onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+            disabled={!table.getCanNextPage()}
+            className="px-2 py-1 border rounded disabled:opacity-50"
+          >
+            {">>"}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 text-sm">
+          <span>
+            Page <strong>{table.getState().pagination.pageIndex + 1}</strong> of{" "}
+            <strong>{table.getPageCount()}</strong>
+          </span>
+
+          <span>| Go to page:</span>
+
+          <input
+            type="number"
+            min={1}
+            max={table.getPageCount()}
+            defaultValue={table.getState().pagination.pageIndex + 1}
+            onChange={(e) => {
+              const page = e.target.value ? Number(e.target.value) - 1 : 0;
+              table.setPageIndex(page);
+            }}
+            className="w-16 border rounded px-2 py-1"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 text-sm">
+          <span>Rows per page:</span>
+
+          <select
+            value={table.getState().pagination.pageSize}
+            onChange={(e) => {
+              table.setPageSize(Number(e.target.value));
+            }}
+            className="border rounded px-2 py-1"
+          >
+            {[5, 10,20,30, 50].map((size) => (
+              <option key={size} value={size}>
+                {size}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     </div>
   );

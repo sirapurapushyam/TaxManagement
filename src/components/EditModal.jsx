@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import CountryDropdown from './CountryDropdown';
-import Spinner from './Spinner';
+import { useState, useEffect } from "react";
+import CountryDropdown from "./CountryDropdown";
+import Spinner from "./Spinner";
+import { X, AlertCircle } from "lucide-react";
 
 const EditModal = ({
   isOpen,
@@ -11,29 +12,29 @@ const EditModal = ({
   isLoadingCountries,
   isSaving,
 }) => {
-  const [name, setName] = useState('');
-  const [country, setCountry] = useState('');
-  const [countryId, setCountryId] = useState('');
+  const [name, setName] = useState("");
+  const [country, setCountry] = useState("");
+  const [countryId, setCountryId] = useState("");
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (tax) {
-      setName(tax.name || '');
-      setCountry(tax.country || '');
-      setCountryId(tax.countryId || '');
+      setName(tax.name || "");
+      setCountry(tax.country || "");
+      setCountryId(tax.countryId || "");
       setErrors({});
     }
   }, [tax]);
 
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     }
 
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
@@ -46,7 +47,7 @@ const EditModal = ({
     const newErrors = {};
 
     if (!name.trim()) {
-      newErrors.name = 'Name is required';
+      newErrors.name = "Name is required";
     }
 
     setErrors(newErrors);
@@ -72,13 +73,13 @@ const EditModal = ({
 
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === "Escape" && isOpen) {
         handleClose();
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -99,26 +100,15 @@ const EditModal = ({
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-            <h2 className="text-xl font-semibold text-gray-900">Edit Customer</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Edit Customer
+            </h2>
             <button
               onClick={handleClose}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
               type="button"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <X className="h-5 w-5" />
             </button>
           </div>
 
@@ -140,28 +130,16 @@ const EditModal = ({
                   className={`w-full px-4 py-3 border rounded-lg text-gray-900 placeholder-gray-400 
                     focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent 
                     transition-all duration-200
-                    ${errors.name 
-                      ? 'border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 hover:border-gray-400'
+                    ${
+                      errors.name
+                        ? "border-red-500 focus:ring-red-500"
+                        : "border-gray-300 hover:border-gray-400"
                     }`}
                   placeholder="Enter name"
                 />
                 {errors.name && (
                   <p className="mt-2 text-sm text-red-500 flex items-center gap-1">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
+                    <AlertCircle className="h-4 w-4" />
                     {errors.name}
                   </p>
                 )}
@@ -199,11 +177,14 @@ const EditModal = ({
               >
                 {isSaving ? (
                   <>
-                    <Spinner size="sm" className="border-white border-t-transparent" />
+                    <Spinner
+                      size="sm"
+                      className="border-white border-t-transparent"
+                    />
                     <span>Saving...</span>
                   </>
                 ) : (
-                  'Save'
+                  "Save"
                 )}
               </button>
             </div>
